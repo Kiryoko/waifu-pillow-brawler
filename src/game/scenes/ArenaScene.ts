@@ -3,31 +3,46 @@ import Phaser from "phaser";
 import { Sfx } from "@/game/audio/Sfx";
 import { GAME_SIZE } from "@/game/config";
 import { Fighter } from "@/game/entities/Fighter";
-import { decideBotIntent } from "@/game/logic/bot";
-import { isTargetInsideAttack, normalizeVector } from "@/game/logic/combat";
-import type { AttackKind, Axis, ControlIntent } from "@/game/types";
+import { BOT_DIFFICULTIES, decideBotIntent, type BotDifficultyKey } from "@/game/logic/bot";
+import { attackOverlapsHurtbox, normalizeVector } from "@/game/logic/combat";
+import type { Axis, ControlIntent, ParrySide } from "@/game/types";
 
 interface KeyMap {
-  readonly left: Phaser.Input.Keyboard.Key;
-  readonly right: Phaser.Input.Keyboard.Key;
-  readonly jump: Phaser.Input.Keyboard.Key;
-  readonly descend: Phaser.Input.Keyboard.Key;
   readonly dash: Phaser.Input.Keyboard.Key;
-  readonly parryLeft: Phaser.Input.Keyboard.Key;
-  readonly parryRight: Phaser.Input.Keyboard.Key;
+  readonly descend: Phaser.Input.Keyboard.Key;
+  readonly difficultyEasy: Phaser.Input.Keyboard.Key;
+  readonly difficultyHard: Phaser.Input.Keyboard.Key;
+  readonly difficultyNormal: Phaser.Input.Keyboard.Key;
+  readonly jump: Phaser.Input.Keyboard.Key;
+  readonly left: Phaser.Input.Keyboard.Key;
   readonly rematch: Phaser.Input.Keyboard.Key;
+  readonly right: Phaser.Input.Keyboard.Key;
+  readonly start: Phaser.Input.Keyboard.Key;
 }
+
+interface PointerButtons {
+  readonly leftPressed: boolean;
+  readonly rightDown: boolean;
+  readonly rightPressed: boolean;
+}
+
+type MatchState = "active" | "roundOver" | "waiting";
 
 export class ArenaScene extends Phaser.Scene {
   private bot!: Fighter;
   private botDamage!: Phaser.GameObjects.Text;
+  private botGuard!: Phaser.GameObjects.Text;
+  private difficulty: BotDifficultyKey = "normal";
+  private difficultyText!: Phaser.GameObjects.Text;
   private keys!: KeyMap;
+  private matchState: MatchState = "waiting";
   private player!: Fighter;
   private playerDamage!: Phaser.GameObjects.Text;
-  private queuedAttack: AttackKind | null = null;
+  private playerGuard!: Phaser.GameObjects.Text;
   private resultText!: Phaser.GameObjects.Text;
-  private roundOver = false;
   private sfx!: Sfx;
+  private wasLeftPointerDown = false;
+  private wasRightPointerDown = false;
 
   public constructor() {
     super("arena");
@@ -40,25 +55,28 @@ export class ArenaScene extends Phaser.Scene {
     this.bindInput();
 
     this.physics.add.collider(this.player.sprite, this.bot.sprite);
-    this.player.reset(300, 510, 1);
-    this.bot.reset(980, 510, -1);
     this.sfx = new Sfx(this);
+    this.prepareRound("Click or press Space to start.");
   }
 
   public override update(): void {
-    if (this.roundOver) {
-      const rematchAttack = this.consumeQueuedAttack();
+    const pointerButtons = this.readPointerButtons();
 
-      if (Phaser.Input.Keyboard.JustDown(this.keys.rematch) || rematchAttack !== null) {
-        this.scene.restart();
-      }
+    this.applyDifficultyInput();
 
+    if (this.matchState !== "active") {
+      this.handleRoundStart(pointerButtons);
+      this.updateHud();
       return;
     }
 
     const now = this.time.now;
-    const playerIntent = this.collectPlayerIntent();
-    const botIntent = decideBotIntent(this.bot.snapshot(now), this.player.snapshot(now));
+    const playerIntent = this.collectPlayerIntent(pointerButtons);
+    const botIntent = decideBotIntent(
+      this.bot.snapshot(now),
+      this.player.snapshot(now),
+      this.difficulty,
+    );
 
     this.player.step(now, playerIntent);
     this.bot.step(now, botIntent);
@@ -67,6 +85,16 @@ export class ArenaScene extends Phaser.Scene {
     this.resolveAttack(this.bot, this.player, now);
     this.updateHud();
     this.checkRoundOver();
+  }
+
+  private applyDifficultyInput(): void {
+    if (Phaser.Input.Keyboard.JustDown(this.keys.difficultyEasy)) {
+      this.difficulty = "easy";
+    } else if (Phaser.Input.Keyboard.JustDown(this.keys.difficultyNormal)) {
+      this.difficulty = "normal";
+    } else if (Phaser.Input.Keyboard.JustDown(this.keys.difficultyHard)) {
+      this.difficulty = "hard";
+    }
   }
 
   private axisFromKeys(): Axis {
@@ -99,20 +127,12 @@ export class ArenaScene extends Phaser.Scene {
       jump: Phaser.Input.Keyboard.KeyCodes.W,
       descend: Phaser.Input.Keyboard.KeyCodes.S,
       dash: Phaser.Input.Keyboard.KeyCodes.SPACE,
-      parryLeft: Phaser.Input.Keyboard.KeyCodes.Q,
-      parryRight: Phaser.Input.Keyboard.KeyCodes.E,
+      start: Phaser.Input.Keyboard.KeyCodes.SPACE,
       rematch: Phaser.Input.Keyboard.KeyCodes.R,
+      difficultyEasy: Phaser.Input.Keyboard.KeyCodes.ONE,
+      difficultyNormal: Phaser.Input.Keyboard.KeyCodes.TWO,
+      difficultyHard: Phaser.Input.Keyboard.KeyCodes.THREE,
     }) as KeyMap;
-
-    this.input.on(Phaser.Input.Events.POINTER_DOWN, (pointer: Phaser.Input.Pointer) => {
-      if (pointer.button === 0) {
-        this.queuedAttack = "primary";
-      }
-
-      if (pointer.button === 2) {
-        this.queuedAttack = "secondary";
-      }
-    });
   }
 
   private checkRoundOver(): void {
@@ -123,50 +143,42 @@ export class ArenaScene extends Phaser.Scene {
       return;
     }
 
-    this.roundOver = true;
+    this.matchState = "roundOver";
     this.physics.pause();
 
     if (playerOut && botOut) {
-      this.resultText.setText("Double tumble. Press R or click to rematch.");
+      this.resultText.setText("Double tumble. Click or press Space for the rematch.");
       return;
     }
 
     this.resultText.setText(
       playerOut
-        ? "Bot wins the pillow duel. Press R or click to rematch."
-        : "You bonked the bot offstage. Press R or click to rematch.",
+        ? "Bot wins. Click or press Space to run it back."
+        : "You win. Click or press Space for the next match.",
     );
   }
 
-  private collectPlayerIntent(): ControlIntent {
+  private collectPlayerIntent(pointerButtons: PointerButtons): ControlIntent {
     const pointer = this.input.activePointer;
     const aim = normalizeVector({
       x: pointer.worldX - this.player.x,
       y: pointer.worldY - this.player.y,
     });
-    let parry: "left" | "right" | null = null;
-
-    if (Phaser.Input.Keyboard.JustDown(this.keys.parryLeft)) {
-      parry = "left";
-    } else if (Phaser.Input.Keyboard.JustDown(this.keys.parryRight)) {
-      parry = "right";
-    }
+    const parry: ParrySide | null = pointerButtons.rightDown
+      ? aim.x < 0
+        ? "left"
+        : "right"
+      : null;
 
     return {
       moveX: this.axisFromKeys(),
       jump: Phaser.Input.Keyboard.JustDown(this.keys.jump),
       descend: Phaser.Input.Keyboard.JustDown(this.keys.descend),
       dash: Phaser.Input.Keyboard.JustDown(this.keys.dash),
-      attack: this.consumeQueuedAttack(),
+      attack: pointerButtons.leftPressed ? "primary" : null,
       parry,
       aim,
     };
-  }
-
-  private consumeQueuedAttack(): AttackKind | null {
-    const queuedAttack = this.queuedAttack;
-    this.queuedAttack = null;
-    return queuedAttack;
   }
 
   private createArenaColliders(fighter: Fighter): void {
@@ -226,6 +238,13 @@ export class ArenaScene extends Phaser.Scene {
         color: "#652b39",
       })
       .setDepth(10);
+    this.playerGuard = this.add
+      .text(36, 62, "", {
+        fontFamily: "Trebuchet MS",
+        fontSize: "18px",
+        color: "#8b5563",
+      })
+      .setDepth(10);
     this.botDamage = this.add
       .text(GAME_SIZE.width - 36, 28, "", {
         fontFamily: "Trebuchet MS",
@@ -234,11 +253,27 @@ export class ArenaScene extends Phaser.Scene {
       })
       .setDepth(10)
       .setOrigin(1, 0);
+    this.botGuard = this.add
+      .text(GAME_SIZE.width - 36, 62, "", {
+        fontFamily: "Trebuchet MS",
+        fontSize: "18px",
+        color: "#8b5563",
+      })
+      .setDepth(10)
+      .setOrigin(1, 0);
     this.resultText = this.add
-      .text(GAME_SIZE.width / 2, 32, "First tumble wins.", {
+      .text(GAME_SIZE.width / 2, 26, "", {
         fontFamily: "Trebuchet MS",
         fontSize: "28px",
         color: "#652b39",
+      })
+      .setDepth(10)
+      .setOrigin(0.5, 0);
+    this.difficultyText = this.add
+      .text(GAME_SIZE.width / 2, 64, "", {
+        fontFamily: "Trebuchet MS",
+        fontSize: "18px",
+        color: "#8b5563",
       })
       .setDepth(10)
       .setOrigin(0.5, 0);
@@ -246,7 +281,7 @@ export class ArenaScene extends Phaser.Scene {
       .text(
         GAME_SIZE.width / 2,
         GAME_SIZE.height - 18,
-        "WASD move, mouse aims, LMB swing, RMB heavy, SPACE dash, Q/E parry, S drop",
+        "WASD move, mouse aim, LMB attack, RMB guard/parry, SPACE dash, S drop, 1/2/3 difficulty",
         {
           fontFamily: "Trebuchet MS",
           fontSize: "20px",
@@ -302,19 +337,59 @@ export class ArenaScene extends Phaser.Scene {
     return "#ee7d36";
   }
 
-  private resolveAttack(attacker: Fighter, defender: Fighter, now: number): void {
-    const attack = attacker.getActiveAttack(now);
+  private difficultyLabel(): string {
+    return BOT_DIFFICULTIES[this.difficulty].label;
+  }
 
-    if (!attack) {
+  private handleRoundStart(pointerButtons: PointerButtons): void {
+    const startPressed =
+      pointerButtons.leftPressed ||
+      pointerButtons.rightPressed ||
+      Phaser.Input.Keyboard.JustDown(this.keys.start) ||
+      Phaser.Input.Keyboard.JustDown(this.keys.rematch);
+
+    if (!startPressed) {
       return;
     }
 
-    const offset = {
-      x: defender.x - attacker.x,
-      y: defender.y - attacker.y,
+    if (this.matchState === "roundOver") {
+      this.prepareRound("Click or press Space to start.");
+    }
+
+    this.matchState = "active";
+    this.physics.resume();
+    this.resultText.setText(`${this.difficultyLabel()} bot. Fight.`);
+  }
+
+  private prepareRound(message: string): void {
+    this.matchState = "waiting";
+    this.physics.resume();
+    this.player.reset(300, 510, 1);
+    this.bot.reset(980, 510, -1);
+    this.physics.pause();
+    this.resultText.setText(message);
+  }
+
+  private readPointerButtons(): PointerButtons {
+    const pointer = this.input.activePointer;
+    const leftDown = pointer.leftButtonDown();
+    const rightDown = pointer.rightButtonDown();
+    const buttons = {
+      leftPressed: leftDown && !this.wasLeftPointerDown,
+      rightPressed: rightDown && !this.wasRightPointerDown,
+      rightDown,
     };
 
-    if (!isTargetInsideAttack(attack.direction, offset, attack.profile)) {
+    this.wasLeftPointerDown = leftDown;
+    this.wasRightPointerDown = rightDown;
+
+    return buttons;
+  }
+
+  private resolveAttack(attacker: Fighter, defender: Fighter, now: number): void {
+    const attack = attacker.getActiveAttack(now);
+
+    if (!attack || !attackOverlapsHurtbox(attack, defender.getHurtbox())) {
       return;
     }
 
@@ -341,13 +416,18 @@ export class ArenaScene extends Phaser.Scene {
       return;
     }
 
-    if (attack.kind === "secondary") {
-      this.sfx.heavySwing();
-    } else {
+    if (outcome === "blocked") {
+      attacker.receiveBlocked(now, {
+        x: defender.x,
+        y: defender.y,
+      });
       this.sfx.hit();
+      this.cameras.main.shake(70, 0.002);
+      return;
     }
 
-    this.cameras.main.shake(100, attack.kind === "secondary" ? 0.006 : 0.0035);
+    this.sfx.hit();
+    this.cameras.main.shake(100, 0.004);
   }
 
   private shouldLandOnPlatform(fighter: Fighter, platform: Phaser.Physics.Arcade.Image): boolean {
@@ -362,12 +442,12 @@ export class ArenaScene extends Phaser.Scene {
     return fighterBody.velocity.y >= -40 && fighterFeet <= platformBody.y + 20;
   }
 
-  private spawnImpact(x: number, y: number, outcome: "hit" | "parry"): void {
+  private spawnImpact(x: number, y: number, outcome: "blocked" | "hit" | "parry"): void {
     const spark = this.add
       .image(x, y, "sparkle")
       .setDepth(9)
       .setScale(outcome === "parry" ? 0.95 : 0.78)
-      .setTint(outcome === "parry" ? 0xffefae : 0xff9eae);
+      .setTint(outcome === "parry" ? 0xffefae : outcome === "blocked" ? 0xbfe6ff : 0xff9eae);
 
     this.tweens.add({
       targets: spark,
@@ -386,12 +466,13 @@ export class ArenaScene extends Phaser.Scene {
     this.playerDamage
       .setText(`YOU ${Math.round(this.player.damage)}%`)
       .setColor(this.damageColor(this.player.damage));
+    this.playerGuard.setText(`Guard ${Math.round(this.player.guardValue)}`);
     this.botDamage
       .setText(`BOT ${Math.round(this.bot.damage)}%`)
       .setColor(this.damageColor(this.bot.damage));
-
-    if (!this.roundOver) {
-      this.resultText.setText("First tumble wins.");
-    }
+    this.botGuard.setText(`Guard ${Math.round(this.bot.guardValue)}`);
+    this.difficultyText.setText(
+      `Difficulty: ${this.difficultyLabel()}  (1 Easy, 2 Normal, 3 Hard)`,
+    );
   }
 }

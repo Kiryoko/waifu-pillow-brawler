@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { ATTACKS } from "@/game/config";
 import {
+  attackOverlapsHurtbox,
   buildKnockback,
-  isTargetInsideAttack,
   normalizeVector,
   resolvesParry,
 } from "@/game/logic/combat";
@@ -14,20 +14,47 @@ describe("combat helpers", () => {
     expect(normalizeVector({ x: 3, y: 4 })).toEqual({ x: 0.6, y: 0.8 });
   });
 
-  it("connects attacks only when the target is inside the swing arc", () => {
-    expect(isTargetInsideAttack({ x: 1, y: 0 }, { x: 110, y: 6 }, ATTACKS.primary)).toBe(true);
-    expect(isTargetInsideAttack({ x: 1, y: 0 }, { x: -110, y: 6 }, ATTACKS.primary)).toBe(false);
+  it("matches attack overlap to the rotated pillow bounds", () => {
+    const overlap = attackOverlapsHurtbox(
+      {
+        center: { x: 120, y: 120 },
+        direction: { x: 1, y: 0 },
+        halfWidth: ATTACKS.primary.hitboxWidth / 2,
+        halfHeight: ATTACKS.primary.hitboxHeight / 2,
+      },
+      {
+        center: { x: 145, y: 120 },
+        halfWidth: 28,
+        halfHeight: 50,
+      },
+    );
+    const miss = attackOverlapsHurtbox(
+      {
+        center: { x: 120, y: 120 },
+        direction: { x: 1, y: 0 },
+        halfWidth: ATTACKS.primary.hitboxWidth / 2,
+        halfHeight: ATTACKS.primary.hitboxHeight / 2,
+      },
+      {
+        center: { x: 240, y: 120 },
+        halfWidth: 28,
+        halfHeight: 50,
+      },
+    );
+
+    expect(overlap).toBe(true);
+    expect(miss).toBe(false);
   });
 
-  it("blocks only the correct parry side and never from directly above", () => {
+  it("blocks only the correct guard side and never from directly above", () => {
     expect(resolvesParry("left", { x: -60, y: 8 })).toBe(true);
     expect(resolvesParry("right", { x: -60, y: 8 })).toBe(false);
     expect(resolvesParry("left", { x: 12, y: -80 })).toBe(false);
   });
 
   it("scales knockback with accumulated damage", () => {
-    const lowDamage = buildKnockback(ATTACKS.secondary, { x: 1, y: 0 }, 10);
-    const highDamage = buildKnockback(ATTACKS.secondary, { x: 1, y: 0 }, 140);
+    const lowDamage = buildKnockback(ATTACKS.primary, { x: 1, y: 0 }, 10);
+    const highDamage = buildKnockback(ATTACKS.primary, { x: 1, y: 0 }, 140);
 
     expect(highDamage.x).toBeGreaterThan(lowDamage.x);
     expect(highDamage.y).toBeLessThan(lowDamage.y);

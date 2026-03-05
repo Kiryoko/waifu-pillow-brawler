@@ -3,8 +3,6 @@ import type { AttackKind } from "@/game/types";
 export interface AttackProfile {
   readonly key: AttackKind;
   readonly textureKey: string;
-  readonly range: number;
-  readonly arcRadians: number;
   readonly windupMs: number;
   readonly activeMs: number;
   readonly recoveryMs: number;
@@ -12,6 +10,9 @@ export interface AttackProfile {
   readonly baseKnockback: number;
   readonly lift: number;
   readonly swingScale: number;
+  readonly hitboxWidth: number;
+  readonly hitboxHeight: number;
+  readonly hitboxForwardOffset: number;
 }
 
 export const GAME_SIZE = {
@@ -20,21 +21,28 @@ export const GAME_SIZE = {
 } as const;
 
 export const MOVEMENT = {
-  groundSpeed: 410,
+  groundSpeed: 405,
   airSpeed: 340,
   jumpVelocity: 860,
-  dashSpeed: 780,
-  dashDurationMs: 150,
-  dashCooldownMs: 420,
+  dashSpeed: 760,
+  dashDurationMs: 120,
+  dashCooldownMs: 760,
+  dashRecoveryMs: 150,
   dropDurationMs: 260,
   maxFallSpeed: 1260,
 } as const;
 
 export const COMBAT = {
-  hitStunMs: 190,
-  parryCommitMs: 150,
-  parryWindowMs: 190,
-  parryStunMs: 280,
+  hitStunMs: 210,
+  parryStunMs: 320,
+  guardBreakStunMs: 720,
+  guardDrainPerSecond: 54,
+  guardRecoverPerSecond: 30,
+  guardRecoverDelayMs: 280,
+  guardReleaseCooldownMs: 180,
+  guardHitCost: 34,
+  guardMax: 100,
+  guardPerfectMs: 120,
 } as const;
 
 export const RING_OUT_MARGIN = 160;
@@ -43,27 +51,29 @@ export const ATTACKS: Record<AttackKind, AttackProfile> = {
   primary: {
     key: "primary",
     textureKey: "pillow-primary",
-    range: 128,
-    arcRadians: 1.15,
-    windupMs: 50,
-    activeMs: 100,
-    recoveryMs: 170,
-    damage: 12,
-    baseKnockback: 470,
-    lift: 200,
+    windupMs: 72,
+    activeMs: 90,
+    recoveryMs: 220,
+    damage: 13,
+    baseKnockback: 490,
+    lift: 220,
     swingScale: 1.04,
+    hitboxWidth: 66,
+    hitboxHeight: 40,
+    hitboxForwardOffset: 20,
   },
   secondary: {
     key: "secondary",
     textureKey: "pillow-secondary",
-    range: 160,
-    arcRadians: 1.55,
     windupMs: 110,
-    activeMs: 135,
-    recoveryMs: 290,
+    activeMs: 120,
+    recoveryMs: 310,
     damage: 19,
     baseKnockback: 590,
-    lift: 290,
+    lift: 300,
     swingScale: 1.18,
+    hitboxWidth: 84,
+    hitboxHeight: 52,
+    hitboxForwardOffset: 28,
   },
 };

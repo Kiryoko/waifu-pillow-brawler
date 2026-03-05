@@ -1,6 +1,19 @@
 import type { AttackProfile } from "@/game/config";
 import type { ParrySide, Vec2 } from "@/game/types";
 
+export interface AttackHitbox {
+  readonly center: Vec2;
+  readonly direction: Vec2;
+  readonly halfWidth: number;
+  readonly halfHeight: number;
+}
+
+export interface Hurtbox {
+  readonly center: Vec2;
+  readonly halfWidth: number;
+  readonly halfHeight: number;
+}
+
 /**
  * Returns a stable unit vector for aiming and knockback.
  *
@@ -22,25 +35,33 @@ export function normalizeVector(vector: Vec2, fallbackX = 1): Vec2 {
 }
 
 /**
- * Tests whether a defender is inside a fighter's current swing.
+ * Tests a rotated pillow hitbox against the defender's hurtbox.
  *
- * @param aim - The locked attack direction.
- * @param toTarget - Vector from attacker to defender.
- * @param profile - Attack profile for range and arc limits.
- * @returns Whether the attack should connect.
+ * @param attack - Rotated attack hitbox aligned to the sprite.
+ * @param hurtbox - Defender hurtbox.
+ * @returns Whether the attack overlaps the defender.
  */
-export function isTargetInsideAttack(aim: Vec2, toTarget: Vec2, profile: AttackProfile): boolean {
-  const distanceSquared = toTarget.x * toTarget.x + toTarget.y * toTarget.y;
+export function attackOverlapsHurtbox(attack: AttackHitbox, hurtbox: Hurtbox): boolean {
+  const direction = normalizeVector(attack.direction);
+  const normal = {
+    x: -direction.y,
+    y: direction.x,
+  };
+  const offset = {
+    x: hurtbox.center.x - attack.center.x,
+    y: hurtbox.center.y - attack.center.y,
+  };
+  const localX = offset.x * direction.x + offset.y * direction.y;
+  const localY = offset.x * normal.x + offset.y * normal.y;
+  const projectedHalfWidth =
+    hurtbox.halfWidth * Math.abs(direction.x) + hurtbox.halfHeight * Math.abs(direction.y);
+  const projectedHalfHeight =
+    hurtbox.halfWidth * Math.abs(normal.x) + hurtbox.halfHeight * Math.abs(normal.y);
 
-  if (distanceSquared > profile.range * profile.range) {
-    return false;
-  }
-
-  const aimDirection = normalizeVector(aim);
-  const targetDirection = normalizeVector(toTarget, aimDirection.x);
-  const dot = aimDirection.x * targetDirection.x + aimDirection.y * targetDirection.y;
-
-  return dot >= Math.cos(profile.arcRadians / 2);
+  return (
+    Math.abs(localX) <= attack.halfWidth + projectedHalfWidth &&
+    Math.abs(localY) <= attack.halfHeight + projectedHalfHeight
+  );
 }
 
 export function classifyIncomingSide(attackerOffset: Vec2): ParrySide | "above" | null {
@@ -58,11 +79,11 @@ export function classifyIncomingSide(attackerOffset: Vec2): ParrySide | "above" 
 }
 
 /**
- * Checks whether the defender's current parry catches the attack.
+ * Checks whether the defender is guarding the correct side.
  *
- * @param parrySide - Defender parry direction, if active.
+ * @param parrySide - Defender guard direction, if active.
  * @param attackerOffset - Vector from defender to attacker.
- * @returns Whether the hit should be parried.
+ * @returns Whether the attack is coming from the guarded side.
  */
 export function resolvesParry(parrySide: ParrySide | null, attackerOffset: Vec2): boolean {
   if (!parrySide) {
@@ -75,10 +96,10 @@ export function resolvesParry(parrySide: ParrySide | null, attackerOffset: Vec2)
 
 export function buildKnockback(profile: AttackProfile, aim: Vec2, defenderDamage: number): Vec2 {
   const direction = normalizeVector(aim);
-  const scaledForce = profile.baseKnockback + defenderDamage * 4.4;
+  const scaledForce = profile.baseKnockback + defenderDamage * 4.2;
 
   return {
     x: direction.x * scaledForce,
-    y: direction.y * scaledForce * 0.3 - profile.lift - defenderDamage * 0.7,
+    y: direction.y * scaledForce * 0.28 - profile.lift - defenderDamage * 0.75,
   };
 }

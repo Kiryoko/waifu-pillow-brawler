@@ -16,25 +16,26 @@ function makeSnapshot(overrides: Partial<FighterSnapshot> = {}): FighterSnapshot
 }
 
 describe("decideBotIntent", () => {
-  it("dashes and advances when the opponent is far away", () => {
-    const intent = decideBotIntent(makeSnapshot(), makeSnapshot({ x: 420, y: 0, canDash: false }));
+  it("keeps the easy bot from dashing until the gap is large", () => {
+    const intent = decideBotIntent(makeSnapshot(), makeSnapshot({ x: 420 }), "easy");
 
     expect(intent.moveX).toBe(1);
-    expect(intent.dash).toBe(true);
+    expect(intent.dash).toBe(false);
     expect(intent.attack).toBeNull();
   });
 
-  it("chooses the heavy swing when the opponent is above and in range", () => {
-    const intent = decideBotIntent(makeSnapshot(), makeSnapshot({ x: 120, y: -96 }));
+  it("lets the hard bot dash earlier to stay aggressive", () => {
+    const intent = decideBotIntent(makeSnapshot({ x: 520 }), makeSnapshot({ x: 940 }), "hard");
 
-    expect(intent.attack).toBe("secondary");
-    expect(intent.jump).toBe(false);
+    expect(intent.moveX).toBe(1);
+    expect(intent.dash).toBe(true);
   });
 
-  it("parries the correct side when the opponent is attacking nearby", () => {
+  it("parries instead of attacking when an incoming hit is close", () => {
     const intent = decideBotIntent(
-      makeSnapshot({ canDash: false }),
-      makeSnapshot({ x: -90, y: 0, activeAttack: "primary" }),
+      makeSnapshot({ x: 320, canDash: false }),
+      makeSnapshot({ x: 238, y: 0, activeAttack: "primary" }),
+      "normal",
     );
 
     expect(intent.parry).toBe("left");
