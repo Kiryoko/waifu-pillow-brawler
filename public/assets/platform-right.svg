@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 96">
+  <defs>
+    <linearGradient id="pillow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff6fb"/>
+      <stop offset="100%" stop-color="#ffd0dd"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="180" cy="84" rx="132" ry="8" fill="#ac5f74" opacity="0.22"/>
+  <rect x="24" y="16" width="312" height="48" rx="24" fill="url(#pillow)"/>
+  <rect x="46" y="28" width="268" height="28" rx="14" fill="#ffffff" opacity="0.58"/>
+  <circle cx="96" cy="40" r="6" fill="#ff97b7" opacity="0.75"/>
+  <circle cx="208" cy="40" r="6" fill="#ff97b7" opacity="0.75"/>
+  <circle cx="276" cy="40" r="6" fill="#ff97b7" opacity="0.75"/>
+</svg>

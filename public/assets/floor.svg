@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 220">
+  <defs>
+    <linearGradient id="sheet" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff3f5"/>
+      <stop offset="100%" stop-color="#ffd7df"/>
+    </linearGradient>
+    <linearGradient id="base" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f09ba8"/>
+      <stop offset="100%" stop-color="#cf6377"/>
+    </linearGradient>
+  </defs>
+  <ellipse cx="480" cy="206" rx="420" ry="10" fill="#c7687a" opacity="0.25"/>
+  <rect x="90" y="74" width="780" height="92" rx="38" fill="url(#sheet)"/>
+  <rect x="50" y="120" width="860" height="64" rx="30" fill="#f7b8c1"/>
+  <path d="M130 74h700c34 0 54 28 54 44H76c0-16 20-44 54-44Z" fill="#fffdfc" opacity="0.55"/>
+  <rect x="98" y="156" width="764" height="42" rx="16" fill="url(#base)"/>
+  <rect x="132" y="146" width="86" height="26" rx="10" fill="#fff0f3" opacity="0.88"/>
+  <rect x="744" y="146" width="86" height="26" rx="10" fill="#fff0f3" opacity="0.88"/>
+  <circle cx="240" cy="118" r="12" fill="#ffc6d3" opacity="0.55"/>
+  <circle cx="480" cy="106" r="14" fill="#ffc6d3" opacity="0.55"/>
+  <circle cx="706" cy="118" r="12" fill="#ffc6d3" opacity="0.55"/>
+</svg>
+
