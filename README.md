@@ -18,10 +18,11 @@ After that, I asked it to also record a gameplay video for X and for this
 README as a preview. It used Playwright and `ffmpeg` on its own to record the
 video.
 
-<video src="./media/waifu-pillow-gameplay.mp4" controls muted playsinline width="960"></video>
 
-If GitHub does not render the player, open the file directly:
-[waifu-pillow-gameplay.mp4](./media/waifu-pillow-gameplay.mp4)
+
+https://github.com/user-attachments/assets/4854bad1-7f86-43b8-aba9-69de2c266c8a
+
+
 
 ## Run it
 
