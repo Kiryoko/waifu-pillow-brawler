@@ -28,6 +28,13 @@ interface PointerButtons {
 
 type MatchState = "active" | "roundOver" | "waiting";
 
+const FLOOR_HITBOX = {
+  x: 640,
+  y: 688,
+  width: 764,
+  height: 68,
+} as const;
+
 export class ArenaScene extends Phaser.Scene {
   private bot!: Fighter;
   private botDamage!: Phaser.GameObjects.Text;
@@ -80,6 +87,8 @@ export class ArenaScene extends Phaser.Scene {
 
     this.player.step(now, playerIntent);
     this.bot.step(now, botIntent);
+    this.stabilizeFloorContact(this.player);
+    this.stabilizeFloorContact(this.bot);
 
     this.resolveAttack(this.player, this.bot, now);
     this.resolveAttack(this.bot, this.player, now);
@@ -184,12 +193,12 @@ export class ArenaScene extends Phaser.Scene {
   }
 
   private createArenaColliders(fighter: Fighter): void {
-    const floor = this.children.getByName("floor");
+    const floor = this.children.getByName("floor-hitbox");
     const leftPlatform = this.children.getByName("platform-left");
     const rightPlatform = this.children.getByName("platform-right");
 
     if (
-      !(floor instanceof Phaser.Physics.Arcade.Image) ||
+      !(floor instanceof Phaser.GameObjects.Zone) ||
       !(leftPlatform instanceof Phaser.Physics.Arcade.Image) ||
       !(rightPlatform instanceof Phaser.Physics.Arcade.Image)
     ) {
@@ -303,11 +312,12 @@ export class ArenaScene extends Phaser.Scene {
       .setDisplaySize(GAME_SIZE.width, GAME_SIZE.height)
       .setDepth(0);
 
-    const floor = this.physics.add.staticImage(640, 666, "floor").setName("floor");
-    floor.setDisplaySize(940, 126);
-    floor.setDepth(1);
-    floor.refreshBody();
-    (floor.body as Phaser.Physics.Arcade.StaticBody).setSize(764, 68).setOffset(88, 42);
+    this.add.image(640, 666, "floor").setDisplaySize(940, 126).setDepth(1);
+
+    const floorHitbox = this.add
+      .zone(FLOOR_HITBOX.x, FLOOR_HITBOX.y, FLOOR_HITBOX.width, FLOOR_HITBOX.height)
+      .setName("floor-hitbox");
+    this.physics.add.existing(floorHitbox, true);
 
     const leftPlatform = this.physics.add
       .staticImage(420, 455, "platform-left")
@@ -468,6 +478,27 @@ export class ArenaScene extends Phaser.Scene {
         spark.destroy();
       },
     });
+  }
+
+  private stabilizeFloorContact(fighter: Fighter): void {
+    const body = fighter.physicsBody;
+    const floorTop = FLOOR_HITBOX.y - FLOOR_HITBOX.height / 2;
+    const floorLeft = FLOOR_HITBOX.x - FLOOR_HITBOX.width / 2;
+    const floorRight = FLOOR_HITBOX.x + FLOOR_HITBOX.width / 2;
+    const centerX = body.x + body.width / 2;
+
+    if (
+      centerX < floorLeft ||
+      centerX > floorRight ||
+      body.velocity.y < 0 ||
+      body.y >= floorTop ||
+      body.bottom <= floorTop
+    ) {
+      return;
+    }
+
+    fighter.sprite.y += floorTop - body.bottom;
+    body.setVelocityY(0);
   }
 
   private updateHud(): void {
