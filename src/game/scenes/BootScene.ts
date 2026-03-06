@@ -3,15 +3,15 @@ import Phaser from "phaser";
 export class BootScene extends Phaser.Scene {
   private readonly assetBasePath = `${import.meta.env.BASE_URL}assets/`;
   private readonly assets = [
-    "background",
-    "floor",
-    "platform-left",
-    "platform-right",
-    "waifu-blue",
-    "waifu-red",
-    "pillow-primary",
-    "pillow-secondary",
-    "sparkle",
+    { key: "background", width: 1280, height: 720 },
+    { key: "floor", width: 960, height: 220 },
+    { key: "platform-left", width: 360, height: 96 },
+    { key: "platform-right", width: 360, height: 96 },
+    { key: "waifu-blue", width: 160, height: 160 },
+    { key: "waifu-red", width: 160, height: 160 },
+    { key: "pillow-primary", width: 120, height: 80 },
+    { key: "pillow-secondary", width: 140, height: 96 },
+    { key: "sparkle", width: 96, height: 96 },
   ] as const;
 
   public constructor() {
@@ -31,8 +31,8 @@ export class BootScene extends Phaser.Scene {
 
     this.load.setPath(this.assetBasePath);
 
-    this.assets.forEach((key) => {
-      this.load.image(key, `${key}.svg`);
+    this.assets.forEach(({ key, width, height }) => {
+      this.load.svg(key, `${key}.svg`, { width, height });
     });
 
     this.load.on(Phaser.Loader.Events.PROGRESS, (value: number) => {
