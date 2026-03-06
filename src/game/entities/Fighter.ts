@@ -448,7 +448,7 @@ export class Fighter {
   }
 
   private handleDrop(now: number, descendPressed: boolean): void {
-    if (!descendPressed || !this.isGrounded()) {
+    if (!descendPressed || !this.isGrounded() || !this.isOnDropThroughPlatform()) {
       return;
     }
 
@@ -466,6 +466,10 @@ export class Fighter {
 
   private isGrounded(): boolean {
     return this.body.blocked.down || this.body.touching.down;
+  }
+
+  private isOnDropThroughPlatform(): boolean {
+    return this.body.bottom < GAME_SIZE.height - 120;
   }
 
   private updateAim(rawAim: Vec2): void {
