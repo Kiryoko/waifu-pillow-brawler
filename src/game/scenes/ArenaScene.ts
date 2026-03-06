@@ -144,6 +144,8 @@ export class ArenaScene extends Phaser.Scene {
     }
 
     this.matchState = "roundOver";
+    this.player.setFrozen(true);
+    this.bot.setFrozen(true);
     this.physics.pause();
 
     if (playerOut && botOut) {
@@ -356,6 +358,8 @@ export class ArenaScene extends Phaser.Scene {
       this.prepareRound("Click or press Space to start.");
     }
 
+    this.player.setFrozen(false);
+    this.bot.setFrozen(false);
     this.matchState = "active";
     this.physics.resume();
     this.resultText.setText(`${this.difficultyLabel()} bot. Fight.`);
@@ -366,6 +370,8 @@ export class ArenaScene extends Phaser.Scene {
     this.physics.resume();
     this.player.reset(300, 510, 1);
     this.bot.reset(980, 510, -1);
+    this.player.setFrozen(true);
+    this.bot.setFrozen(true);
     this.physics.pause();
     this.resultText.setText(message);
   }

@@ -73,6 +73,7 @@ export class Fighter {
   private guardRecoveryBlockedUntil = 0;
   private guarding = false;
   private lastStepAt = 0;
+  private lastDashTrailAt = 0;
   private parrySide: ParrySide | null = null;
   private recoveryUntil = 0;
   private stunUntil = 0;
@@ -134,6 +135,19 @@ export class Fighter {
     }
 
     return this.buildAttackView(this.attackState);
+  }
+
+  public setFrozen(frozen: boolean): void {
+    this.body.moves = !frozen;
+
+    if (frozen) {
+      this.body.stop();
+      this.body.setAllowGravity(false);
+      return;
+    }
+
+    this.body.setAllowGravity(true);
+    this.lastStepAt = 0;
   }
 
   public getHurtbox(): Hurtbox {
@@ -231,6 +245,7 @@ export class Fighter {
     this.guardPerfectUntil = 0;
     this.guardRecoveryBlockedUntil = 0;
     this.guarding = false;
+    this.lastDashTrailAt = 0;
     this.lastStepAt = 0;
     this.parrySide = null;
     this.recoveryUntil = 0;
@@ -320,9 +335,17 @@ export class Fighter {
   }
 
   private buildAttackView(attackState: ActiveAttack): AttackView {
-    const halfWidth = (attackState.profile.hitboxWidth * this.weapon.scaleX) / 2;
-    const halfHeight = (attackState.profile.hitboxHeight * this.weapon.scaleY) / 2;
-    const centerOffset = attackState.profile.hitboxForwardOffset * this.weapon.scaleX;
+    const halfWidth = Math.max(
+      attackState.profile.hitboxWidth / 2,
+      this.weapon.displayWidth * 0.36,
+    );
+    const halfHeight = Math.max(
+      attackState.profile.hitboxHeight / 2,
+      this.weapon.displayHeight * 0.34,
+    );
+    const centerOffset =
+      (0.5 - this.weapon.originX) * this.weapon.displayWidth +
+      attackState.profile.hitboxForwardOffset;
 
     return {
       kind: attackState.kind,
@@ -419,6 +442,7 @@ export class Fighter {
     this.dashUntil = now + MOVEMENT.dashDurationMs;
     this.dashCooldownUntil = now + MOVEMENT.dashCooldownMs;
     this.guardPerfectUntil = 0;
+    this.lastDashTrailAt = now - 40;
     this.recoveryUntil = Math.max(this.recoveryUntil, now + MOVEMENT.dashRecoveryMs);
     this.body.setVelocity(direction.x * MOVEMENT.dashSpeed, direction.y * MOVEMENT.dashSpeed);
   }
@@ -498,10 +522,11 @@ export class Fighter {
     const attack = this.attackState;
     const attackStrength =
       attack && now >= attack.windupEndsAt && now <= attack.activeEndsAt ? 1 : 0.58;
+    const activeSwing = attackStrength > 0.9;
     const idleBob = this.isGrounded() ? Math.sin(now / 140) * 2 : 0;
-    const reach = attack ? 50 + attack.profile.hitboxForwardOffset * 1.7 * attackStrength : 42;
+    const reach = attack ? 34 + attack.profile.hitboxForwardOffset + (activeSwing ? 34 : 16) : 28;
     const shieldAlpha = this.guarding ? 0.16 + (this.guardMeter / COMBAT.guardMax) * 0.2 : 0;
-    const scale = attack ? attack.profile.swingScale : 0.72;
+    const scale = attack ? attack.profile.swingScale * (activeSwing ? 1.24 : 0.92) : 0.48;
 
     this.shadow
       .setPosition(this.x, this.y + 76)
@@ -515,7 +540,7 @@ export class Fighter {
     this.sprite
       .setAngle(Phaser.Math.Clamp(this.body.velocity.x * 0.03, -10, 10))
       .setFlipX(this.facing < 0)
-      .setScale(now < this.dashUntil ? 0.78 : 0.74);
+      .setScale(now < this.dashUntil ? 0.82 : 0.74);
     this.weapon
       .setTexture(attack ? attack.profile.textureKey : "pillow-primary")
       .setPosition(this.x + this.aim.x * reach, this.y - 18 + idleBob + this.aim.y * reach * 0.5)
@@ -523,7 +548,11 @@ export class Fighter {
       .setScale(scale)
       .setAlpha(this.guarding ? 0.46 : 1);
 
-    if (now < this.guardPerfectUntil) {
+    if (now < this.dashUntil) {
+      this.spawnDashTrail(now);
+    }
+
+    if (this.guarding) {
       this.sprite.setTintFill(0xffefae);
       this.weapon.setTintFill(this.accent);
     } else if (now < this.stunUntil) {
@@ -533,5 +562,34 @@ export class Fighter {
       this.sprite.clearTint();
       this.weapon.clearTint();
     }
+  }
+
+  private spawnDashTrail(now: number): void {
+    if (now - this.lastDashTrailAt < 38) {
+      return;
+    }
+
+    this.lastDashTrailAt = now;
+
+    const trail = this.sprite.scene.add
+      .image(this.x, this.y, this.sprite.texture.key)
+      .setDepth(5)
+      .setScale(this.sprite.scaleX, this.sprite.scaleY)
+      .setAlpha(0.22)
+      .setTint(this.accent)
+      .setFlipX(this.facing < 0)
+      .setAngle(this.sprite.angle);
+
+    this.sprite.scene.tweens.add({
+      targets: trail,
+      alpha: 0,
+      scaleX: trail.scaleX * 0.92,
+      scaleY: trail.scaleY * 0.92,
+      duration: 140,
+      ease: "Quad.Out",
+      onComplete: () => {
+        trail.destroy();
+      },
+    });
   }
 }
