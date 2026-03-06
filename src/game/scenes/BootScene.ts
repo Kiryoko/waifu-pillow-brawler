@@ -3,15 +3,15 @@ import Phaser from "phaser";
 export class BootScene extends Phaser.Scene {
   private readonly assetBasePath = `${import.meta.env.BASE_URL}assets/`;
   private readonly assets = [
-    { key: "background", width: 1280, height: 720 },
-    { key: "floor", width: 960, height: 220 },
-    { key: "platform-left", width: 360, height: 96 },
-    { key: "platform-right", width: 360, height: 96 },
-    { key: "waifu-blue", width: 160, height: 160 },
-    { key: "waifu-red", width: 160, height: 160 },
-    { key: "pillow-primary", width: 300, height: 200 },
-    { key: "pillow-secondary", width: 350, height: 240 },
-    { key: "sparkle", width: 96, height: 96 },
+    { key: "background", width: 267, height: 150 },
+    { key: "floor", width: 300, height: 69 },
+    { key: "platform-left", width: 300, height: 80 },
+    { key: "platform-right", width: 300, height: 80 },
+    { key: "waifu-blue", width: 150, height: 150 },
+    { key: "waifu-red", width: 150, height: 150 },
+    { key: "pillow-primary", width: 225, height: 150 },
+    { key: "pillow-secondary", width: 219, height: 150 },
+    { key: "sparkle", width: 150, height: 150 },
   ] as const;
 
   public constructor() {
