@@ -3,6 +3,10 @@
 This is a test repo to see how good the newly released GPT-5.4 model from
 OpenAI is.
 
+Play online: https://waifu-pillow-brawler.pages.dev/
+
+Open source: https://github.com/Kiryoko/waifu-pillow-brawler
+
 I asked it to create a waifu pillow brawler game using Phaser. It also had to
 generate the SVG assets and audio effects from scratch.
 
