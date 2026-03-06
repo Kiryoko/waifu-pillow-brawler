@@ -337,15 +337,16 @@ export class Fighter {
   private buildAttackView(attackState: ActiveAttack): AttackView {
     const halfWidth = Math.max(
       attackState.profile.hitboxWidth / 2,
-      this.weapon.displayWidth * 0.36,
+      this.weapon.displayWidth * 0.46,
     );
     const halfHeight = Math.max(
       attackState.profile.hitboxHeight / 2,
       this.weapon.displayHeight * 0.34,
     );
     const centerOffset =
-      (0.5 - this.weapon.originX) * this.weapon.displayWidth +
-      attackState.profile.hitboxForwardOffset;
+      (0.5 - this.weapon.originX) * this.weapon.displayWidth -
+      this.weapon.displayWidth * 0.28 +
+      attackState.profile.hitboxForwardOffset * 0.15;
 
     return {
       kind: attackState.kind,
