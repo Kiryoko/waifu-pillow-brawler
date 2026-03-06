@@ -356,6 +356,7 @@ export class ArenaScene extends Phaser.Scene {
 
     if (this.matchState === "roundOver") {
       this.prepareRound("Click or press Space to start.");
+      return;
     }
 
     this.player.setFrozen(false);
