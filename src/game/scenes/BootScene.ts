@@ -9,8 +9,8 @@ export class BootScene extends Phaser.Scene {
     { key: "platform-right", width: 360, height: 96 },
     { key: "waifu-blue", width: 160, height: 160 },
     { key: "waifu-red", width: 160, height: 160 },
-    { key: "pillow-primary", width: 120, height: 80 },
-    { key: "pillow-secondary", width: 140, height: 96 },
+    { key: "pillow-primary", width: 300, height: 200 },
+    { key: "pillow-secondary", width: 350, height: 240 },
     { key: "sparkle", width: 96, height: 96 },
   ] as const;
 
