@@ -307,6 +307,7 @@ export class ArenaScene extends Phaser.Scene {
     floor.setDisplaySize(940, 126);
     floor.setDepth(1);
     floor.refreshBody();
+    (floor.body as Phaser.Physics.Arcade.StaticBody).setSize(764, 68).setOffset(88, 42);
 
     const leftPlatform = this.physics.add
       .staticImage(420, 455, "platform-left")
